@@ -24,7 +24,8 @@ CRES=${CRES:-96}
 # FIXufs  - Location of ufs_utils root fixed data directory.
 # FIXfv3  - Location of target grid orography and 'grid' files.
 # FIXsfc  - Location of target grid surface climatological files.
-# FIXam   - Location of vertical coordinate definition file for target grid.
+# FIXam   - Location of vertical coordinate definition file for target grid 
+#           and RAP grib2 input grid lat/lon definition file.
 #----------------------------------------------------------------------------
 
 ufs_ver=${ufs_ver:-v1.0.0}
@@ -33,9 +34,9 @@ NWROOT=${NWROOT:-/nw${envir}}
 HOMEufs=${HOMEufs:-${NWROOT}/ufs_util.${ufs_ver}}
 EXECufs=${EXECufs:-$HOMEufs/exec}
 FIXufs=${FIXufs:-$HOMEufs/fix}
-FIXfv3=${FIXfv3:-$FIXufs/orog/C${CRES}}
+FIXfv3=${FIXfv3:-$FIXufs/fix_fv3_gmted2010/C${CRES}}
 FIXsfc=${FIXsfc:-$FIXfv3/fix_sfc}
-FIXam=${FIXam:-$FIXufs/am}
+FIXam=${FIXam:-$FIXufs/fix_am}
 
 #----------------------------------------------------------------------------
 # CDATE - YYMMDDHH of your run.
@@ -78,6 +79,7 @@ HALO_BLEND=${HALO_BLEND:-0}
 # OROG_DIR_INPUT_GRID - Location of orography and grid files for input grid.
 #                       Only used for 'history' and 'restart' INPUT_TYPE.
 #                       Set to NULL otherwise.
+# OROG_DIR_TARGET_GRID - Location of orography and grid files for target grid.
 #
 # OROG_FILES_INPUT_GRID - List of orography files for input grid.  Only
 #                         used for 'history' and 'restart' INPUT_TYPE.
@@ -86,6 +88,7 @@ HALO_BLEND=${HALO_BLEND:-0}
 
 INPUT_TYPE=${INPUT_TYPE:-"gaussian_nemsio"}
 MOSAIC_FILE_INPUT_GRID=${MOSAIC_FILE_INPUT_GRID:-NULL}
+MOSAIC_DIR_INPUT_GRID=${MOSAIC_DIR_INPUT_GRID:-NULL}
 OROG_DIR_INPUT_GRID=${OROG_DIR_INPUT_GRID:-NULL}
 OROG_FILES_INPUT_GRID=${OROG_FILES_INPUT_GRID:-NULL}
 
@@ -156,14 +159,7 @@ GEOGRID_FILE_INPUT=${GEOGRID_FILE_INPUT:-NULL}
 #                          be located in FIXfv3.
 #
 # THOMPSON_AEROSOL_FILE = Location of Thompson aerosol climatology file.
-#
-# WAM_COLD_START = Set to .true. if coldstarting for the Whole Atmosphere
-#                  Model (WAM).
-#
-# WAM_PARM_FILE = Location of the parameter file used by the WAM function.
 #----------------------------------------------------------------------------
-
-WAM_PARM_FILE=${WAM_PARM_FILE:-NULL}
 
 VARMAP_FILE=${VARMAP_FILE:-NULL}
 
@@ -172,6 +168,7 @@ TRACERS_TARGET=${TRACERS_TARGET:-'"sphum","liq_wat","o3mr","ice_wat","rainwat","
 VCOORD_FILE=${VCOORD_FILE:-${FIXam}/global_hyblev.l65.txt}
 
 MOSAIC_FILE_TARGET_GRID=${MOSAIC_FILE_TARGET_GRID:-${FIXfv3}/C${CRES}_mosaic.nc}
+MOSAIC_DIR_TARGET_GRID=${MOSAIC_DIR_TARGET_GRID:-NULL}
 
 OROG_FILES_TARGET_GRID=${OROG_FILES_TARGET_GRID:-NULL}
 if [ $OROG_FILES_TARGET_GRID == NULL ]; then
@@ -249,14 +246,16 @@ mkdir -p $DATA
 cd $DATA || exit 99
 
 rm -f ./fort.41
-
 cat << EOF > ./fort.41
  &config
+  mosaic_dir_target_grid="${MOSAIC_DIR_TARGET_GRID}"
   mosaic_file_target_grid="${MOSAIC_FILE_TARGET_GRID}"
   fix_dir_target_grid="${FIXsfc}"
-  orog_dir_target_grid="${FIXfv3}"
+  orog_dir_target_grid="${OROG_DIR_TARGET_GRID}"
+  fix_dir_input_grid="${FIXam}"
   orog_files_target_grid="${OROG_FILES_TARGET_GRID}"
   vcoord_file_target_grid="${VCOORD_FILE}"
+  mosaic_dir_input_grid="${MOSAIC_DIR_INPUT_GRID}"
   mosaic_file_input_grid="${MOSAIC_FILE_INPUT_GRID}"
   orog_dir_input_grid="${OROG_DIR_INPUT_GRID}"
   orog_files_input_grid="${OROG_FILES_INPUT_GRID}"
@@ -269,7 +268,6 @@ cat << EOF > ./fort.41
   grib2_file_input_grid="${GRIB2_FILE_INPUT}"
   geogrid_file_input_grid="${GEOGRID_FILE_INPUT}"
   varmap_file="${VARMAP_FILE}"
-  wam_parm_file="${WAM_PARM_FILE}"
   cycle_year=$iy
   cycle_mon=$im
   cycle_day=$id
@@ -278,8 +276,8 @@ cat << EOF > ./fort.41
   convert_sfc=$CONVERT_SFC
   convert_nst=$CONVERT_NST
   input_type="${INPUT_TYPE}"
-  tracers=${TRACERS_TARGET}
-  tracers_input=${TRACERS_INPUT}
+  tracers=$TRACERS_TARGET
+  tracers_input=$TRACERS_INPUT
   regional=$REGIONAL
   halo_bndy=$HALO_BNDY
   halo_blend=$HALO_BLEND
